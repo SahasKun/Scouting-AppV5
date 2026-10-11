@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>FRC Scout</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#12161d;--panel:#1b212b;--line:#2c3544;--text:#e8ecf2;--mute:#8b96a8;--red:#e5484d;--blue:#3b82f6;--ok:#f5b83d;--on:#1a1405}
+@media (prefers-color-scheme:light){:root{--bg:#f2f4f7;--panel:#fff;--line:#d6dbe3;--text:#161b24;--mute:#5d6878}}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font:16px/1.4 Barlow,system-ui,sans-serif}
+h2,.num,button,nav{font-family:"Barlow Condensed",Impact,sans-serif}
+header{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line);padding:env(safe-area-inset-top,0) 12px 0}
+.top{display:flex;gap:8px;align-items:center;justify-content:space-between;padding:8px 0}
+.top b{font-size:1.4rem;font-family:"Barlow Condensed",sans-serif}
+.top input{width:130px;padding:6px 8px}
+#who{font-size:.85rem;color:var(--mute)}#who button{background:none;border:0;color:var(--ok);font-size:1rem;cursor:pointer}
+nav{display:flex}nav button{flex:1;background:none;border:0;border-bottom:3px solid transparent;color:var(--mute);font-size:1.15rem;padding:8px 0;cursor:pointer}
+nav button.on{color:var(--text);border-color:var(--ok)}
+main{max-width:960px;margin:0 auto;padding:12px 12px 120px}
+section{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:12px}
+h2{margin:0 0 8px;font-size:1.3rem}
+label{display:block;color:var(--mute);font-size:.85rem;margin:8px 0 2px}
+input,textarea,select{width:100%;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:10px;font:inherit}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+button{font-size:1.1rem}
+.seg button,.tog{flex:1;min-width:28%;padding:14px 8px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--text);cursor:pointer}
+.tog{width:100%;margin-top:10px;text-align:left}
+.on.seg button,.seg button.on,.tog.on{background:var(--ok);color:var(--on);border-color:var(--ok);font-weight:700}
+.big{font-size:5rem;text-align:center;line-height:1;margin:6px 0 14px}
+.fuel{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.fuel button{height:72px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--text);font-size:1.8rem;cursor:pointer}
+.fuel button:active{background:var(--ok);color:var(--on)}
+.rate{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:8px 0}
+.rate .seg{flex:0 0 auto;flex-wrap:nowrap}.rate button{min-width:0;width:44px;height:44px;padding:0}
+.bar{position:fixed;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px calc(10px + env(safe-area-inset-bottom,0px));background:var(--panel);border-top:1px solid var(--line)}
+.bar span{font-family:"Barlow Condensed",sans-serif;font-size:1.15rem}.bar b{font-size:1.5rem}
+.btn{background:var(--ok);color:var(--on);border:0;border-radius:10px;padding:12px 22px;font-weight:700;cursor:pointer}
+.btn.w{display:block;width:100%;margin:8px 0}.btn.ghost{background:none;color:var(--text);border:1px solid var(--line)}
+.scroll{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:.95rem}
+th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line);white-space:nowrap}th{color:var(--mute);font-weight:500}
+tr[data-team]{cursor:pointer}
+.chip{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px}
+.toast{position:fixed;left:50%;top:80px;transform:translateX(-50%);background:var(--ok);color:var(--on);padding:10px 18px;border-radius:10px;font-weight:700;z-index:9}
+.cmt{border-top:1px solid var(--line);padding:8px 0}.cmt small{color:var(--mute)}
+.asg{display:grid;grid-template-columns:34px repeat(6,minmax(70px,1fr));gap:4px;align-items:center;min-width:560px;margin-bottom:4px}
+.asg select{padding:4px;font-size:.8rem}
+.login{min-height:calc(100dvh - 24px);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:14px;padding:24px 8px 80px}
+.login h1{margin:0;font:700 3.4rem/1 "Barlow Condensed",Impact,sans-serif}
+.login p{margin:0;color:var(--mute);max-width:28ch}
+.gbtn{display:flex;align-items:center;gap:12px;background:#fff;color:#1f1f1f;border:1px solid #dadce0;border-radius:999px;padding:12px 22px;font:500 1.05rem Barlow,system-ui,sans-serif;cursor:pointer;margin-top:10px}
+.gbtn:hover{background:#f6f8fb}
+.login small{color:var(--red);max-width:34ch}
+main>section{max-width:680px;margin-left:auto;margin-right:auto}
+.top input:disabled{opacity:.7}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:12px;margin:0 auto 12px}
+.cards section{margin:0}
+.brow{display:grid;grid-template-columns:52px 1fr 120px;gap:8px;align-items:center;margin:6px 0;cursor:pointer}
+.track{display:flex;height:18px;background:var(--bg);border-radius:9px;overflow:hidden}.track i{display:block;height:100%}
+.brow span{text-align:right;font-size:.9rem}
+.cols{display:flex;gap:8px;align-items:flex-end;overflow-x:auto;padding-bottom:6px;min-height:160px}
+.col{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px;min-width:36px}
+.stack{display:flex;flex-direction:column;width:28px;border-radius:4px;overflow:hidden}
+:focus-visible{outline:3px solid var(--ok);outline-offset:2px}
+</style>
+</head>
+<body>
+<header>
+  <div class="top"><b>FRC Scout</b><input id="ek" placeholder="Event key" aria-label="Event key" hidden><span id="who"></span></div>
+  <nav id="nav"></nav>
+</header>
+<main id="app"></main>
+
+<script type="module">
+import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {initializeFirestore,persistentLocalCache,doc,setDoc,onSnapshot,collection} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+import C from "./config.js";
+
+const STEPS=['Start','Auto','Teleop','Endgame','Summary'];
+const HANGS=[['none','No hang'],['fail','Tried, failed'],['L1','Level 1'],['L2','Level 2'],['L3','Level 3']];
+const RATE=['Driving','Scoring accuracy','Defense','Reliability'];
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const toast=m=>{const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2200)};
+const avg=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:0;
+
+const ready=!!C.firebase.apiKey;
+let auth,db,user=null,tab='scout',evKey='',unsubs=[],unsubActive=null,dbErr='',evLoaded=false,evExists=false,denied=false;
+let ev={matches:[],roster:[],assign:{}},reps={},pick={m:'',team:''},teamSel=null,adminM='',s=newSess();
+if(ready){auth=getAuth(initializeApp(C.firebase));db=initializeFirestore(auth.app,{localCache:persistentLocalCache()})}
+
+function newSess(){return{m:'',team:'',alliance:'',step:0,start:'',aF:0,aClimb:false,tF:0,hang:'none',r:{},c:{}}}
+const autoPts=r=>r.aF*C.pts.fuel+(r.aClimb?C.pts.autoClimb:0);
+const telePts=r=>r.tF*C.pts.fuel+(C.pts.hang[r.hang]||0);
+const isAdmin=()=>!!user&&C.admins.some(a=>a.toLowerCase()===(user.email||'').toLowerCase());
+const me=()=>{const e=ev.roster.find(r=>(r.email||'').toLowerCase()===(user.email||'').toLowerCase());return e?e.name:user.displayName};
+const matchOf=n=>ev.matches.find(m=>String(m.n)===String(n));
+const allyOf=(m,t)=>{const x=matchOf(m);return x?(x.red.includes(+t)?'red':'blue'):''};
+
+const explain=x=>x.code==='permission-denied'?'Firestore rules are blocking access. In Firebase open Firestore Database, then Rules, paste the rules from the setup steps and click Publish.':(['unavailable','failed-precondition','not-found'].includes(x.code)?'Cannot reach the database. Check that Firestore Database is created in this Firebase project and that you are online.':(x.code||x.message));
+const dbFail=x=>{console.error(x);if(x.code==='permission-denied'&&user&&!isAdmin())denied=true;else dbErr=explain(x);render()};
+const put=(data,msg)=>{const t=setTimeout(()=>toast('Still saving. Check your internet and Firestore setup.'),8000);
+  return setDoc(doc(db,'events',evKey),data,{merge:true}).then(()=>{clearTimeout(t);dbErr='';toast(msg)},x=>{clearTimeout(t);dbFail(x)})};
+function watch(){
+  unsubs.forEach(u=>u());unsubs=[];ev={matches:[],roster:[],assign:{}};reps={};dbErr='';evLoaded=false;evExists=false;denied=false;
+  if(!user||!evKey)return render();
+  unsubs.push(onSnapshot(doc(db,'events',evKey),d=>{evLoaded=true;evExists=d.exists();dbErr='';ev={matches:[],roster:[],assign:{},...d.data()};safeRender()},dbFail));
+  unsubs.push(onSnapshot(collection(db,'events',evKey,'reports'),q=>{reps={};q.forEach(d=>reps[d.id]=d.data());safeRender()},dbFail));
+}
+function safeRender(){
+  if(document.activeElement?.matches('textarea,select[data-as]'))return;
+  if(tab==='scout'&&s.team)return;
+  render();
+}
+
+/* ---------- views ---------- */
+function render(){
+  $('#ek').hidden=!user;$('#ek').value=evKey;$('#ek').disabled=!(user&&isAdmin());
+  $('#who').innerHTML=user?`${esc(user.displayName)} <button data-out>Sign out</button>`:'';
+  const app=$('#app');
+  $('header').hidden=!user||denied;
+  if(!user){app.innerHTML=loginPage();return}
+  if(denied){app.innerHTML=deniedPage();return}
+  const tabs=[['scout','Scout'],['reports','Reports'],...(isAdmin()?[['admin','Admin']]:[])];
+  $('#nav').innerHTML=tabs.map(([k,l])=>`<button data-tab="${k}" class="${tab===k?'on':''}">${l}</button>`).join('');
+  const banner=dbErr?`<section style="border-color:var(--red)"><b>Database problem:</b> ${esc(dbErr)}</section>`:'';
+  app.innerHTML=banner+(!evKey?(isAdmin()?'<section>Type the event key in the box above to start an event for everyone.</section>':'<section>No event is active yet. Ask a lead scout to set it.</section>'):{scout:scoutView,reports:reportsView,admin:adminView}[tab]());
+}
+
+function loginPage(){
+  return `<div class="login"><h1>FRC Scout</h1><p>Sign in with your team Google account to see your assigned matches.</p>
+  <button class="gbtn" id="in"><svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>Sign in with Google</button>
+  ${ready?'':'<small>Setup needed: add your Firebase settings to the SETTINGS block in index.html, then reload.</small>'}</div>`;
+}
+
+function deniedPage(){
+  return `<div class="login"><h1>Not on the roster</h1><p>${esc(user.email)} is not on the roster for this event. Ask a lead scout to add this email, then sign in again.</p><button class="gbtn" data-out>Sign out</button></div>`;
+}
+
+function pickView(){
+  const mine=Object.entries(ev.assign).filter(([,v])=>v===me()).map(([k])=>k.split('_')).sort((a,b)=>a[0]-b[0]);
+  const mm=matchOf(pick.m),teams=mm?[...mm.red.map(t=>[t,'red']),...mm.blue.map(t=>[t,'blue'])]:[];
+  const sel=ev.matches.length?`
+    <label for="sm">Match</label><select id="sm"><option value="">Choose a match</option>${ev.matches.map(m=>`<option value="${m.n}" ${String(m.n)===String(pick.m)?'selected':''}>Qualification ${m.n}</option>`).join('')}</select>
+    <label for="st">Team</label><select id="st"><option value="">Choose a team</option>${teams.map(([t,a])=>`<option value="${t}" ${String(t)===String(pick.team)?'selected':''}>${t} (${a})</option>`).join('')}</select>`
+    :`<label for="sm">Match number</label><input id="sm" type="number" inputmode="numeric" value="${esc(pick.m)}"><label for="st">Team number</label><input id="st" type="number" inputmode="numeric" value="${esc(pick.team)}">`;
+  const cur=pick.m+'|'+pick.team,go=`<button class="btn w" data-begin ${pick.m&&pick.team?'':'disabled'}>Start scouting</button>`;
+  const onRoster=ev.roster.some(r=>(r.email||'').toLowerCase()===(user.email||'').toLowerCase());
+  const status=!evLoaded?'<section>Loading event data...</section>':!evExists?`<section>No data found for event key <b>${esc(evKey)}</b>. It must match the key your lead scout loaded.</section>`:'';
+  const who=`Signed in as ${esc(user.email)}${evLoaded&&evExists&&!onRoster?'. This email is not on the roster, so nothing can be assigned to you.':''}`;
+  return status+`<section><h2>My assigned matches</h2><select id="asg" aria-label="My assigned matches"><option value="">${mine.length?'Choose a match ('+mine.length+' assigned)':'None assigned yet'}</option>${mine.map(([m,t])=>`<option value="${m}|${t}" ${m+'|'+t===cur?'selected':''} ${reps[m+'_'+t]?'disabled':''}>Q${m}, team ${t} (${allyOf(m,t)||'?'})${reps[m+'_'+t]?' (done)':''}</option>`).join('')}</select>${go}
+  ${mine.length?'':'<p><small style="color:var(--mute)">Ask a lead scout to assign you matches.</small></p>'}<p><small style="color:var(--mute)">${who}</small></p></section>
+  ${isAdmin()?`<section><h2>Any match or team (admin)</h2>${sel}${go}</section>`:''}`;
+}
+
+function ptsHtml(){return `<span>Auto <b>${autoPts(s)}</b></span><span>Teleop <b>${telePts(s)}</b></span><span>Total <b>${autoPts(s)+telePts(s)}</b></span>`}
+function fuelPad(key){return `<div class="num big" id="n-${key}">${s[key]}</div><div class="fuel">${[[-1,'−1'],[1,'+1'],[5,'+5'],[10,'+10']].map(([d,l])=>`<button data-f="${key}" data-d="${d}">${l}</button>`).join('')}</div>`}
+const segBtns=(attr,items,cur)=>items.map(([v,l])=>`<button data-${attr}="${v}" class="${cur===v?'on':''}">${l}</button>`).join('');
+
+function scoutView(){
+  if(!s.team)return pickView();
+  return `<section><span class="chip" style="background:var(--${s.alliance||'mute'})"></span><b>Q${esc(s.m)}, team ${esc(s.team)}</b> <button class="btn ghost" style="float:right;padding:4px 10px" data-cancel>Change</button></section>
+  <div class="cards">
+    <section><h2>Starting position</h2><div class="seg">${segBtns('start',C.starts.map(p=>[p,p]),s.start)}</div></section>
+    <section><h2>Auto fuel</h2>${fuelPad('aF')}<button class="tog ${s.aClimb?'on':''}" data-aclimb>Climbed in auto (${C.pts.autoClimb} pts)</button></section>
+    <section><h2>Teleop fuel</h2>${fuelPad('tF')}</section>
+    <section><h2>Endgame hang</h2><div class="seg">${segBtns('hang',HANGS,s.hang)}</div></section>
+    <section><h2>Team rating (1 to 5)</h2>${RATE.map(k=>`<div class="rate"><span>${k}</span><div class="seg">${[1,2,3,4,5].map(n=>`<button data-r="${k}" data-v="${n}" class="${s.r[k]===n?'on':''}">${n}</button>`).join('')}</div></div>`).join('')}</section>
+    <section><h2>Comments</h2><label for="c1">What they do well</label><textarea id="c1" data-c="good" rows="3">${esc(s.c.good)}</textarea>
+    <label for="c2">Problems or other notes</label><textarea id="c2" data-c="bad" rows="3">${esc(s.c.bad)}</textarea></section>
+  </div>
+  <div class="bar"><div id="pts" style="display:flex;gap:12px">${ptsHtml()}</div><button class="btn" data-submit>Submit</button></div>`;
+}
+
+function teamStats(){
+  const by={};Object.values(reps).forEach(r=>(by[r.team]||=[]).push(r));
+  return Object.entries(by).map(([team,rs])=>({team,rs,n:rs.length,a:avg(rs.map(autoPts)),t:avg(rs.map(telePts)),
+    hang:Math.round(rs.filter(r=>['L1','L2','L3'].includes(r.hang)).length/rs.length*100),
+    rt:RATE.map(k=>avg(rs.map(r=>r.r?.[k]).filter(Boolean)))})).sort((x,y)=>(y.a+y.t)-(x.a+x.t));
+}
+function reportsView(){
+  const st=teamStats();if(!st.length)return '<section>No reports yet for this event.</section>';
+  const sel=st.find(x=>String(x.team)===String(teamSel)),max=Math.max(...st.map(x=>x.a+x.t),1),tot=r=>autoPts(r)+telePts(r);
+  const chart=`<section><h2>Average points by team</h2>${st.map(x=>`<div class="brow" data-team="${x.team}"><b>${x.team}</b><div class="track"><i style="width:${x.a/max*100}%;background:var(--blue)"></i><i style="width:${x.t/max*100}%;background:var(--ok)"></i></div><span>${(x.a+x.t).toFixed(1)} <small style="color:var(--mute)">(${x.n} games)</small></span></div>`).join('')}
+    <small style="color:var(--mute)">Blue is auto, yellow is teleop. Tap a team to see each of its games.</small></section>`;
+  const table=`<section><h2>Team summary</h2><div class="scroll"><table><tr><th>Team</th><th>Games</th><th>Avg auto</th><th>Avg teleop</th><th>Hang %</th>${RATE.map(k=>`<th>${k}</th>`).join('')}</tr>
+    ${st.map(x=>`<tr data-team="${x.team}"><td><b>${x.team}</b></td><td>${x.n}</td><td>${x.a.toFixed(1)}</td><td>${x.t.toFixed(1)}</td><td>${x.hang}%</td>${x.rt.map(v=>`<td>${v?v.toFixed(1):'-'}</td>`).join('')}</tr>`).join('')}</table></div>
+    <button class="btn ghost w" data-csv>Download CSV</button></section>`;
+  if(!sel)return chart+table;
+  const rs=[...sel.rs].sort((a,b)=>a.m-b.m),mx=Math.max(...rs.map(tot),1);
+  return chart+`<section id="games"><h2>Team ${sel.team}, points by game</h2><div class="cols">${rs.map(r=>`<div class="col"><span>${tot(r)}</span><div class="stack" style="height:${Math.max(tot(r)/mx*120,3)}px"><i style="flex:${telePts(r)||0.001};background:var(--ok)"></i><i style="flex:${autoPts(r)||0.001};background:var(--blue)"></i></div><small>Q${r.m}</small></div>`).join('')}</div></section>
+  <section><h2>Comments on team ${sel.team}</h2>${rs.map(r=>`<div class="cmt"><small>Q${r.m}, ${esc(r.scout)}, start ${esc(r.start)||'?'}</small><br>${r.c?.good?'<b>Good:</b> '+esc(r.c.good)+'<br>':''}${r.c?.bad?'<b>Problems:</b> '+esc(r.c.bad):''}</div>`).join('')}</section>`+table;
+}
+
+function adminView(){
+  const names=ev.roster.map(r=>r.name);
+  const opts=v=>`<option value="">-</option>`+names.map(n=>`<option ${n===v?'selected':''}>${esc(n)}</option>`).join('');
+  return `<section><h2>Schedule</h2><button class="btn w" data-tba>Get schedule from The Blue Alliance</button><small>${ev.matches.length} qualification matches loaded</small></section>
+  <section><h2>Roster</h2><label for="ro">One per line: name, Google email</label><textarea id="ro" rows="6">${esc(ev.roster.map(r=>r.name+(r.email?', '+r.email:'')).join('\n'))}</textarea>
+  <button class="btn w" data-roster>Save roster</button><button class="btn ghost w" data-auto>Auto-assign everyone</button></section>
+  <section><h2>Assignments</h2>${ev.matches.length?(()=>{
+    const am=matchOf(adminM)||ev.matches[0],counts={};
+    Object.values(ev.assign).forEach(v=>{if(v)counts[v]=(counts[v]||0)+1});
+    return `<label for="am">Match</label><select id="am">${ev.matches.map(m=>`<option value="${m.n}" ${m===am?'selected':''}>Qualification ${m.n}</option>`).join('')}</select>
+    ${[...am.red.map(t=>[t,'red']),...am.blue.map(t=>[t,'blue'])].map(([t,a])=>`<label for="a${t}"><span class="chip" style="background:var(--${a})"></span>Team ${t}</label><select id="a${t}" data-as="${am.n}_${t}">${opts(ev.assign[am.n+'_'+t])}</select>`).join('')}
+    <p><small style="color:var(--mute)">Matches per scout: ${names.map(n=>esc(n)+' '+(counts[n]||0)).join(', ')||'add a roster first'}</small></p>`})():'Load the schedule first.'}</section>`;
+}
+
+/* ---------- actions ---------- */
+async function tba(){
+  if(!C.tbaKey)return toast('Add your Blue Alliance key in SETTINGS');
+  const r=await fetch(`https://www.thebluealliance.com/api/v3/event/${evKey}/matches/simple`,{headers:{'X-TBA-Auth-Key':C.tbaKey}});
+  if(!r.ok)return toast('Blue Alliance error '+r.status);
+  const ms=(await r.json()).filter(m=>m.comp_level==='qm').sort((a,b)=>a.match_number-b.match_number)
+    .map(m=>({n:m.match_number,red:m.alliances.red.team_keys.map(k=>+k.slice(3)),blue:m.alliances.blue.team_keys.map(k=>+k.slice(3))}));
+  if(!ms.length)return toast('No qualification matches posted yet');
+  put({matches:ms},`Loaded ${ms.length} matches`);
+}
+function autoAssign(){
+  const N=ev.roster.length;if(!N||!ev.matches.length)return toast('Need a roster and a schedule');
+  if(N<6)toast('Fewer than 6 scouts: some will cover 2 teams per match');
+  const assign={};
+  ev.matches.forEach((m,i)=>[...m.red,...m.blue].forEach((t,j)=>assign[m.n+'_'+t]=ev.roster[(i*6+j)%N].name));
+  put({assign},'Assignments saved');
+}
+function csv(){
+  const cols=['match','team','alliance','scout','start','autoFuel','autoClimb','teleFuel','hang','autoPts','telePts',...RATE,'good','bad'];
+  const q=v=>`"${String(v??'').replace(/"/g,'""')}"`;
+  const rows=Object.values(reps).map(r=>[r.m,r.team,r.alliance,r.scout,r.start,r.aF,r.aClimb?1:0,r.tF,r.hang,autoPts(r),telePts(r),...RATE.map(k=>r.r?.[k]),r.c?.good,r.c?.bad]);
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([[cols,...rows].map(x=>x.map(q).join(',')).join('\n')],{type:'text/csv'}));a.download=evKey+'-scouting.csv';a.click();
+}
+function submit(){
+  const id=`${s.m}_${s.team}`;
+  setDoc(doc(db,'events',evKey,'reports',id),{...s,scout:me(),uid:user.uid,t:Date.now()}).catch(dbFail);
+  toast('Saved. It syncs when you are online.');
+  pick={m:/^\d+$/.test(s.m)?String(+s.m+1):'',team:''};s=newSess();render();window.scrollTo(0,0);
+}
+
+document.addEventListener('click',e=>{
+  const row=e.target.closest('[data-team]');if(row){teamSel=row.dataset.team;render();$('#games')?.scrollIntoView({behavior:'smooth'});return}
+  const b=e.target.closest('button');if(!b)return;const d=b.dataset;
+  if(b.id==='in'){if(!ready)toast('Add your Firebase settings first');else signInWithPopup(auth,new GoogleAuthProvider()).catch(x=>toast(x.code==='auth/unauthorized-domain'?`Add "${location.hostname||'(none: open via Live Server, not the file)'}" to Firebase Authorized domains`:x.message))}
+  else if('out' in d)signOut(auth);
+  else if(d.tab){tab=d.tab;render()}
+  else if('begin' in d){if(!isAdmin()&&ev.assign[pick.m+'_'+pick.team]!==me())return toast('That match is not assigned to you');s=newSess();s.m=pick.m;s.team=pick.team;s.alliance=allyOf(pick.m,pick.team);render()}
+  else if('cancel' in d){if(confirm('Discard this match?')){s=newSess();render()}}
+  else if(d.start||d.hang||d.r){if(d.start)s.start=d.start;if(d.hang)s.hang=d.hang;if(d.r)s.r[d.r]=+d.v;
+    b.parentElement.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));$('#pts').innerHTML=ptsHtml()}
+  else if(d.f){s[d.f]=Math.max(0,s[d.f]+ +d.d);$('#n-'+d.f).textContent=s[d.f];$('#pts').innerHTML=ptsHtml()}
+  else if('aclimb' in d){s.aClimb=!s.aClimb;b.classList.toggle('on',s.aClimb);$('#pts').innerHTML=ptsHtml()}
+  else if('submit' in d)submit();
+  else if('tba' in d)tba();
+  else if('roster' in d){const roster=$('#ro').value.split('\n').map(l=>l.trim()).filter(Boolean).map(l=>{const[n,m]=l.split(',').map(x=>x.trim());return m?{name:n,email:m}:{name:n}});
+    put({roster,emails:roster.map(r=>(r.email||'').toLowerCase()).filter(Boolean)},'Roster saved')}
+  else if('auto' in d)autoAssign();
+  else if('csv' in d)csv();
+});
+document.addEventListener('change',e=>{
+  const t=e.target;
+  if(t.id==='ek'){if(!isAdmin())return;setDoc(doc(db,'app','active'),{event:t.value.trim().toLowerCase()}).then(()=>toast('Event set for everyone'),dbFail)}
+  else if(t.id==='asg'&&t.value){const[m,tm]=t.value.split('|');pick={m,team:tm};render()}
+  else if(t.id==='sm'){pick={m:t.value,team:''};render()}
+  else if(t.id==='st'){pick.team=t.value;render()}
+  else if(t.id==='am'){adminM=t.value;render()}
+  else if(t.dataset.as){ev.assign[t.dataset.as]=t.value;put({assign:{[t.dataset.as]:t.value}},'Saved')}
+});
+document.addEventListener('input',e=>{if(e.target.dataset.c)s.c[e.target.dataset.c]=e.target.value});
+
+if(ready)onAuthStateChanged(auth,u=>{
+  user=u;if(unsubActive)unsubActive();unsubActive=null;denied=false;evKey='';
+  if(!u)return watch();
+  unsubActive=onSnapshot(doc(db,'app','active'),d=>{const k=(d.data()?.event||'').toLowerCase();if(k!==evKey){evKey=k;watch()}else render()},dbFail);
+});else render();
+</script>
+</body>
+</html>
