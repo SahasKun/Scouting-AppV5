@@ -65,6 +65,9 @@ main>section{max-width:680px;margin-left:auto;margin-right:auto}
 .denied{position:fixed;inset:0;z-index:20;background:#b3121b;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:18px;padding:24px}
 .denied h1{margin:0;font:700 clamp(3rem,13vw,7rem)/1 "Barlow Condensed",Impact,sans-serif;letter-spacing:.02em}
 .denied p{margin:0;max-width:34ch;font-size:1.1rem}
+.gl{stroke:var(--line);stroke-width:1}.tx{fill:var(--mute);font:10px Barlow,system-ui,sans-serif}
+.leg{display:flex;gap:14px;flex-wrap:wrap;font-size:.9rem;margin-top:6px}
+.kv td:last-child{text-align:right;font-weight:500}
 :focus-visible{outline:3px solid var(--ok);outline-offset:2px}
 </style>
 </head>
@@ -92,7 +95,7 @@ const avg=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:0;
 
 const ready=!!C.firebase.apiKey;
 let auth,db,user=null,tab='scout',evKey='',unsubs=[],unsubActive=null,dbErr='',evLoaded=false,evExists=false,denied=false;
-let ev={matches:[],roster:[],assign:{}},reps={},pick={m:'',team:''},teamSel=null,adminM='',s=newSess();
+let ev={matches:[],roster:[],assign:{}},reps={},pick={m:'',team:''},teamSel=null,cmp=[],adminM='',s=newSess();
 if(ready){auth=getAuth(initializeApp(C.firebase));db=initializeFirestore(auth.app,{localCache:persistentLocalCache()})}
 
 function newSess(){return{m:'',team:'',alliance:'',step:0,start:'',aF:0,aClimb:false,tF:0,hang:'none',r:{},c:{}}}
@@ -129,16 +132,16 @@ function render(){
   $('header').hidden=!user||blocked();
   if(!user){app.innerHTML=loginPage();return}
   if(blocked()){app.innerHTML=deniedPage();return}
-  const tabs=[['scout','Scout'],['reports','Reports'],...(isAdmin()?[['admin','Admin']]:[])];
-  $('#nav').innerHTML=tabs.map(([k,l])=>`<button data-tab="${k}" class="${tab===k?'on':''}">${l}</button>`).join('');
+  const tabs=[['scout','Scout'],['reports','Reports'],['compare','Compare'],...(isAdmin()?[['admin','Admin']]:[])];
+  $('#nav').innerHTML=tabs.map(([k,l])=>`<button data-tab="${k}" class="${tab===k||(k==='reports'&&tab==='team')?'on':''}">${l}</button>`).join('');
   const banner=dbErr?`<section style="border-color:var(--red)"><b>Database problem:</b> ${esc(dbErr)}</section>`:'';
-  app.innerHTML=banner+(!evKey?(isAdmin()?'<section>Type the event key in the box above to start an event for everyone.</section>':'<section>No event is active yet. Ask a lead scout to set it.</section>'):{scout:scoutView,reports:reportsView,admin:adminView}[tab]());
+  app.innerHTML=banner+(!evKey?(isAdmin()?'<section>Type the event key in the box above to start an event for everyone.</section>':'<section>No event is active yet. Ask a lead scout to set it.</section>'):{scout:scoutView,reports:reportsView,team:teamView,compare:compareView,admin:adminView}[tab]());
 }
 
 function loginPage(){
   return `<div class="login"><h1>FRC Scout</h1><p>Sign in with your team Google account to see your assigned matches.</p>
   <button class="gbtn" id="in"><svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>Sign in with Google</button>
-  ${ready?'':'<small>Setup needed: add your Firebase settings to config.js, then reload.</small>'}<small style="color:var(--mute)">Version 5.1</small></div>`;
+  ${ready?'':'<small>Setup needed: add your Firebase settings to config.js, then reload.</small>'}<small style="color:var(--mute)">Version 5.2</small></div>`;
 }
 
 function deniedPage(){
@@ -186,18 +189,58 @@ function teamStats(){
     hang:Math.round(rs.filter(r=>['L1','L2','L3'].includes(r.hang)).length/rs.length*100),
     rt:RATE.map(k=>avg(rs.map(r=>r.r?.[k]).filter(Boolean)))})).sort((x,y)=>(y.a+y.t)-(x.a+x.t));
 }
+const COLORS=['#3b82f6','#f5b83d','#e5484d','#34c38f','#a78bfa','#f97316'];
+const tot=r=>autoPts(r)+telePts(r);
+function lineChart(title,series){
+  const W=340,H=180,L=34,R=12,T=10,B=26;
+  const xs=[...new Set(series.flatMap(l=>l.pts.map(p=>p[0])))].sort((a,b)=>a-b);
+  if(!xs.length)return '';
+  const top=Math.max(...series.flatMap(l=>l.pts.map(p=>p[1])),1),ymax=Math.max(4,Math.ceil(top/4)*4),every=Math.ceil(xs.length/8);
+  const X=i=>L+(xs.length<2?(W-L-R)/2:i*(W-L-R)/(xs.length-1)),Y=v=>T+(H-T-B)*(1-v/ymax);
+  const grid=[0,1,2,3,4].map(i=>{const v=ymax*i/4;return `<line class="gl" x1="${L}" x2="${W-R}" y1="${Y(v)}" y2="${Y(v)}"/><text class="tx" x="${L-5}" y="${Y(v)+3}" text-anchor="end">${v}</text>`}).join('');
+  const xl=xs.map((x,i)=>i%every?'':`<text class="tx" x="${X(i)}" y="${H-8}" text-anchor="middle">Q${x}</text>`).join('');
+  const lines=series.map(l=>{const pts=[...l.pts].sort((a,b)=>a[0]-b[0]).map(([x,y])=>[X(xs.indexOf(x)),Y(y),x,y]);
+    return `<polyline fill="none" stroke="${l.color}" stroke-width="2.5" stroke-linejoin="round" points="${pts.map(p=>p[0]+','+p[1]).join(' ')}"/>`+pts.map(p=>`<circle cx="${p[0]}" cy="${p[1]}" r="3.5" fill="${l.color}"><title>${esc(l.name)}, Q${p[2]}: ${p[3]}</title></circle>`).join('')}).join('');
+  const leg=series.length>1?`<div class="leg">${series.map(l=>`<span><span class="chip" style="background:${l.color}"></span>${esc(l.name)}</span>`).join('')}</div>`:'';
+  return `<section><h2>${esc(title)}</h2><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(title)}" style="width:100%;height:auto">${grid}${xl}${lines}</svg>${leg}</section>`;
+}
+const byGame=rs=>[...rs].sort((a,b)=>a.m-b.m);
+
 function reportsView(){
   const st=teamStats();if(!st.length)return '<section>No reports yet for this event.</section>';
-  const sel=st.find(x=>String(x.team)===String(teamSel)),max=Math.max(...st.map(x=>x.a+x.t),1),tot=r=>autoPts(r)+telePts(r);
+  const max=Math.max(...st.map(x=>x.a+x.t),1);
   const chart=`<section><h2>Average points by team</h2>${st.map(x=>`<div class="brow" data-team="${x.team}"><b>${x.team}</b><div class="track"><i style="width:${x.a/max*100}%;background:var(--blue)"></i><i style="width:${x.t/max*100}%;background:var(--ok)"></i></div><span>${(x.a+x.t).toFixed(1)} <small style="color:var(--mute)">(${x.n} games)</small></span></div>`).join('')}
-    <small style="color:var(--mute)">Blue is auto, yellow is teleop. Tap a team to see each of its games.</small></section>`;
+    <small style="color:var(--mute)">Blue is auto, yellow is teleop. Tap a team to open its page.</small></section>`;
   const table=`<section><h2>Team summary</h2><div class="scroll"><table><tr><th>Team</th><th>Games</th><th>Avg auto</th><th>Avg teleop</th><th>Hang %</th>${RATE.map(k=>`<th>${k}</th>`).join('')}</tr>
-    ${st.map(x=>`<tr data-team="${x.team}"><td><b>${x.team}</b></td><td>${x.n}</td><td>${x.a.toFixed(1)}</td><td>${x.t.toFixed(1)}</td><td>${x.hang}%</td>${x.rt.map(v=>`<td>${v?v.toFixed(1):'-'}</td>`).join('')}</tr>`).join('')}</table></div>
+    ${st.map(x=>`<tr data-team="${x.team}" style="cursor:pointer"><td><b>${x.team}</b></td><td>${x.n}</td><td>${x.a.toFixed(1)}</td><td>${x.t.toFixed(1)}</td><td>${x.hang}%</td>${x.rt.map(v=>`<td>${v?v.toFixed(1):'-'}</td>`).join('')}</tr>`).join('')}</table></div>
     <button class="btn ghost w" data-csv>Download CSV</button></section>`;
-  if(!sel)return chart+table;
-  const rs=[...sel.rs].sort((a,b)=>a.m-b.m),mx=Math.max(...rs.map(tot),1);
-  return chart+`<section id="games"><h2>Team ${sel.team}, points by game</h2><div class="cols">${rs.map(r=>`<div class="col"><span>${tot(r)}</span><div class="stack" style="height:${Math.max(tot(r)/mx*120,3)}px"><i style="flex:${telePts(r)||0.001};background:var(--ok)"></i><i style="flex:${autoPts(r)||0.001};background:var(--blue)"></i></div><small>Q${r.m}</small></div>`).join('')}</div></section>
-  <section><h2>Comments on team ${sel.team}</h2>${rs.map(r=>`<div class="cmt"><small>Q${r.m}, ${esc(r.scout)}, start ${esc(r.start)||'?'}</small><br>${r.c?.good?'<b>Good:</b> '+esc(r.c.good)+'<br>':''}${r.c?.bad?'<b>Problems:</b> '+esc(r.c.bad):''}</div>`).join('')}</section>`+table;
+  return chart+table;
+}
+
+function teamView(){
+  const teams=teamStats();if(!teams.length)return '<section>No reports yet for this event.</section>';
+  const st=teams.find(x=>String(x.team)===String(teamSel))||teams[0],rs=byGame(st.rs);
+  const pick=`<section><button class="btn ghost" data-tab="reports" style="float:right;padding:6px 12px">Back to reports</button><label for="tsel">Team</label><select id="tsel" style="max-width:160px">${[...teams].sort((a,b)=>a.team-b.team).map(x=>`<option value="${x.team}" ${x===st?'selected':''}>${x.team}</option>`).join('')}</select></section>`;
+  const sum=`<section><h2>Team ${st.team}</h2><table class="kv"><tr><td>Games scouted</td><td>${st.n}</td></tr><tr><td>Average total points</td><td>${(st.a+st.t).toFixed(1)}</td></tr><tr><td>Average auto</td><td>${st.a.toFixed(1)}</td></tr><tr><td>Average teleop</td><td>${st.t.toFixed(1)}</td></tr><tr><td>Hang rate</td><td>${st.hang}%</td></tr>
+    ${RATE.map((k,i)=>`<tr><td>${k}</td><td>${st.rt[i]?st.rt[i].toFixed(1)+' / 5':'-'}</td></tr>`).join('')}</table></section>`;
+  const ln=(name,color,f)=>({name,color,pts:rs.map(r=>[+r.m,f(r)])});
+  const charts=`<div class="cards">${lineChart('Total points per game',[ln('Total','#34c38f',tot)])}${lineChart('Auto points per game',[ln('Auto','#3b82f6',autoPts)])}${lineChart('Teleop points per game',[ln('Teleop','#f5b83d',telePts)])}</div>`;
+  const games=`<section><h2>Every game</h2><div class="scroll"><table><tr><th>Game</th><th>Start</th><th>Auto</th><th>Teleop</th><th>Hang</th><th>Total</th></tr>
+    ${rs.map(r=>`<tr><td>Q${r.m}</td><td>${esc(r.start)||'-'}</td><td>${autoPts(r)}</td><td>${telePts(r)}</td><td>${(HANGS.find(h=>h[0]===r.hang)||['','-'])[1]}</td><td><b>${tot(r)}</b></td></tr>`).join('')}</table></div></section>`;
+  const cm=`<section><h2>Comments</h2>${rs.map(r=>`<div class="cmt"><small>Q${r.m}, ${esc(r.scout)}</small><br>${r.c?.good?'<b>Good:</b> '+esc(r.c.good)+'<br>':''}${r.c?.bad?'<b>Problems:</b> '+esc(r.c.bad):''}${!r.c?.good&&!r.c?.bad?'<small>No comments</small>':''}</div>`).join('')}</section>`;
+  return pick+sum+charts+games+cm;
+}
+
+function compareView(){
+  const teams=teamStats().sort((a,b)=>a.team-b.team);if(!teams.length)return '<section>No reports yet for this event.</section>';
+  cmp=cmp.filter(t=>teams.some(x=>x.team===t));
+  const chosen=cmp.map(t=>teams.find(x=>x.team===t));
+  const chips=`<section><h2>Pick teams to compare</h2><div class="seg">${teams.map(x=>{const i=cmp.indexOf(x.team);return `<button data-cmp="${x.team}" class="${i>=0?'on':''}" style="flex:0 0 auto;min-width:72px;${i>=0?`background:${COLORS[i]};border-color:${COLORS[i]};color:#111`:''}">${x.team}</button>`}).join('')}</div><small style="color:var(--mute)">Choose 2 to 6 teams.</small></section>`;
+  if(chosen.length<2)return chips+'<section>Select at least two teams to see the comparison.</section>';
+  const line=(title,f)=>lineChart(title,chosen.map((x,i)=>({name:'Team '+x.team,color:COLORS[i],pts:byGame(x.rs).map(r=>[+r.m,f(r)])})));
+  const rows=[['Games',x=>x.n],['Average total',x=>(x.a+x.t).toFixed(1)],['Average auto',x=>x.a.toFixed(1)],['Average teleop',x=>x.t.toFixed(1)],['Hang rate',x=>x.hang+'%'],...RATE.map((k,i)=>[k,x=>x.rt[i]?x.rt[i].toFixed(1):'-'])];
+  const table=`<section><h2>Side by side</h2><div class="scroll"><table><tr><th></th>${chosen.map((x,i)=>`<th><span class="chip" style="background:${COLORS[i]}"></span>${x.team}</th>`).join('')}</tr>${rows.map(([l,f])=>`<tr><td>${l}</td>${chosen.map(x=>`<td>${f(x)}</td>`).join('')}</tr>`).join('')}</table></div></section>`;
+  return chips+`<div class="cards">${line('Total points per game',tot)}${line('Auto points per game',autoPts)}${line('Teleop points per game',telePts)}</div>`+table;
 }
 
 function adminView(){
@@ -245,11 +288,12 @@ function submit(){
 }
 
 document.addEventListener('click',e=>{
-  const row=e.target.closest('[data-team]');if(row){teamSel=row.dataset.team;render();$('#games')?.scrollIntoView({behavior:'smooth'});return}
+  const row=e.target.closest('[data-team]');if(row){teamSel=row.dataset.team;tab='team';render();window.scrollTo(0,0);return}
   const b=e.target.closest('button');if(!b)return;const d=b.dataset;
   if(b.id==='in'){if(!ready)toast('Add your Firebase settings first');else signInWithPopup(auth,new GoogleAuthProvider()).catch(x=>toast(x.code==='auth/unauthorized-domain'?`Add "${location.hostname||'(none: open via Live Server, not the file)'}" to Firebase Authorized domains`:x.message))}
   else if('out' in d)signOut(auth);
-  else if(d.tab){tab=d.tab;render()}
+  else if(d.tab){tab=d.tab;render();window.scrollTo(0,0)}
+  else if(d.cmp){cmp=cmp.includes(d.cmp)?cmp.filter(t=>t!==d.cmp):cmp.length<6?[...cmp,d.cmp]:(toast('Up to 6 teams'),cmp);render()}
   else if('begin' in d){if(!isAdmin()&&ev.assign[pick.m+'_'+pick.team]!==me())return toast('That match is not assigned to you');s=newSess();s.m=pick.m;s.team=pick.team;s.alliance=allyOf(pick.m,pick.team);render()}
   else if('cancel' in d){if(confirm('Discard this match?')){s=newSess();render()}}
   else if(d.start||d.hang||d.r){if(d.start)s.start=d.start;if(d.hang)s.hang=d.hang;if(d.r)s.r[d.r]=+d.v;
@@ -270,6 +314,7 @@ document.addEventListener('change',e=>{
   else if(t.id==='sm'){pick={m:t.value,team:''};render()}
   else if(t.id==='st'){pick.team=t.value;render()}
   else if(t.id==='am'){adminM=t.value;render()}
+  else if(t.id==='tsel'){teamSel=t.value;render()}
   else if(t.dataset.as){ev.assign[t.dataset.as]=t.value;put({assign:{[t.dataset.as]:t.value}},'Saved')}
 });
 document.addEventListener('input',e=>{if(e.target.dataset.c)s.c[e.target.dataset.c]=e.target.value});
