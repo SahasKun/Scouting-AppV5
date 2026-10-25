@@ -129,8 +129,8 @@ const allyOf=(m,t)=>{const x=matchOf(m);return x?(x.red.map(String).includes(Str
 
 const explain=x=>x.code==='permission-denied'?'Firestore rules are blocking access. In Firebase open Firestore Database, then Rules, paste the rules from the setup steps and click Publish.':(['unavailable','failed-precondition','not-found'].includes(x.code)?'Cannot reach the database. Check that Firestore Database is created in this Firebase project and that you are online.':(x.code||x.message));
 const dbFail=x=>{console.error(x);if(x.code==='permission-denied'&&user&&!isAdmin())denied=true;else dbErr=explain(x);render()};
-const put=(data,msg)=>{const t=setTimeout(()=>toast('Still saving. Check your internet and Firestore setup.'),8000);
-  return setDoc(doc(db,'events',evKey),data,{merge:true}).then(()=>{clearTimeout(t);dbErr='';toast(msg)},x=>{clearTimeout(t);dbFail(x)})};
+const put=(data,msg,opt={merge:true})=>{const t=setTimeout(()=>toast('Still saving. Check your internet and Firestore setup.'),8000);
+  return setDoc(doc(db,'events',evKey),data,opt).then(()=>{clearTimeout(t);dbErr='';toast(msg)},x=>{clearTimeout(t);dbFail(x)})};
 function watch(){
   unsubs.forEach(u=>u());unsubs=[];ev={matches:[],roster:[],assign:{}};reps={};dbErr='';evLoaded=false;evExists=false;denied=false;
   if(!user||!evKey)return render();
@@ -161,7 +161,7 @@ function render(){
 function loginPage(){
   return `<div class="login"><h1>FRC Scout</h1><p>Sign in with your team Google account to see your assigned matches.</p>
   <button class="gbtn" id="in"><svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>Sign in with Google</button>
-  ${ready?'':'<small>Setup needed: add your Firebase settings to config.js, then reload.</small>'}<small style="color:var(--mute)">Version 5.5</small></div>`;
+  ${ready?'':'<small>Setup needed: add your Firebase settings to config.js, then reload.</small>'}<small style="color:var(--mute)">Version 5.6</small></div>`;
 }
 
 function deniedPage(){
@@ -169,7 +169,7 @@ function deniedPage(){
 }
 
 function pickView(){
-  const mine=Object.entries(ev.assign).filter(([,v])=>v===me()).map(([k])=>k.split('_')).sort((a,b)=>a[0]-b[0]);
+  const mine=Object.entries(ev.assign).filter(([k,v])=>v===me()&&!k.includes('NaN')).map(([k])=>k.split('_')).sort((a,b)=>a[0]-b[0]);
   const mm=matchOf(pick.m),teams=mm?[...mm.red.map(t=>[t,'red']),...mm.blue.map(t=>[t,'blue'])]:[];
   const sel=ev.matches.length?`
     <label for="sm">Match</label><select id="sm"><option value="">Choose a match</option>${ev.matches.map(m=>`<option value="${m.n}" ${String(m.n)===String(pick.m)?'selected':''}>Qualification ${m.n}</option>`).join('')}</select>
@@ -301,14 +301,15 @@ async function tba(){
   const ms=(await r.json()).filter(m=>m.comp_level==='qm').sort((a,b)=>a.match_number-b.match_number)
     .map(m=>({n:m.match_number,red:m.alliances.red.team_keys.map(k=>k.slice(3)),blue:m.alliances.blue.team_keys.map(k=>k.slice(3))}));
   if(!ms.length)return toast('No qualification matches posted yet');
-  put({matches:ms},`Loaded ${ms.length} matches`);loadName(evKey);
+  const clean=Object.fromEntries(Object.entries(ev.assign).filter(([k])=>!k.includes('NaN')));
+  put({matches:ms,assign:clean},`Loaded ${ms.length} matches`,{mergeFields:['matches','assign']});loadName(evKey);
 }
 function autoAssign(){
   const N=ev.roster.length;if(!N||!ev.matches.length)return toast('Need a roster and a schedule');
   if(N<6)toast('Fewer than 6 scouts: some will cover 2 teams per match');
   const assign={};
   ev.matches.forEach((m,i)=>[...m.red,...m.blue].forEach((t,j)=>assign[m.n+'_'+t]=ev.roster[(i*6+j)%N].name));
-  put({assign},'Assignments saved');
+  put({assign},'Assignments saved',{mergeFields:['assign']});
 }
 function csv(){
   const cols=['match','team','alliance','scout','start','autoFuel','autoClimb','teleFuel','hang','autoPts','telePts',...RATE,'good','bad'];
