@@ -75,12 +75,24 @@ tr[data-team]:hover{background:var(--field)}
 .brow span{text-align:right;font-size:.9rem}
 .leg{display:flex;gap:14px;flex-wrap:wrap;font-size:.9rem;margin-top:8px}
 .gl{stroke:var(--line);stroke-width:1;stroke-dasharray:3 4}.tx{fill:var(--mute);font:10px Barlow,system-ui,sans-serif}
+#evname{font-size:.85rem;color:var(--mute);max-width:34vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dots{display:flex;gap:8px;margin:12px 0 8px}
+.dots button{width:12px;height:12px;min-width:0;padding:0;border:0;border-radius:6px;background:var(--line);cursor:pointer}
+.dots button.on{width:30px;background:var(--ok)}
+.navbtns{display:flex;gap:8px}
+.side{text-align:center;color:#fff;background:var(--mute);border-color:transparent}
+.side.red{background:var(--red)}.side.blue{background:var(--blue)}
+.sidebig{font-size:2.8rem;font-weight:700;line-height:1.1;margin:4px 0}
+.pt{outline:none;cursor:pointer}.pt .lab{opacity:0;pointer-events:none}
+.pt:hover .lab,.pt:focus .lab{opacity:1}
+.pt:hover circle:not(.hit),.pt:focus circle:not(.hit){r:6}
+.labbg{fill:var(--text)}.labtx{fill:var(--bg);font:600 11px Barlow,system-ui,sans-serif}
 :focus-visible{outline:3px solid var(--ok);outline-offset:2px}
 </style>
 </head>
 <body>
 <header>
-  <div class="top"><b>FRC Scout</b><span id="who"></span></div>
+  <div class="top"><b>FRC Scout</b><span id="evname"></span><span id="who"></span></div>
   <nav id="nav"></nav>
 </header>
 <main id="app"></main>
@@ -113,7 +125,7 @@ const isOnRoster=()=>ev.roster.some(r=>(r.email||'').toLowerCase()===(user.email
 const blocked=()=>denied||(!!user&&!isAdmin()&&evLoaded&&evExists&&!isOnRoster());
 const me=()=>{const e=ev.roster.find(r=>(r.email||'').toLowerCase()===(user.email||'').toLowerCase());return e?e.name:user.displayName};
 const matchOf=n=>ev.matches.find(m=>String(m.n)===String(n));
-const allyOf=(m,t)=>{const x=matchOf(m);return x?(x.red.includes(+t)?'red':'blue'):''};
+const allyOf=(m,t)=>{const x=matchOf(m);return x?(x.red.map(String).includes(String(t))?'red':'blue'):''};
 
 const explain=x=>x.code==='permission-denied'?'Firestore rules are blocking access. In Firebase open Firestore Database, then Rules, paste the rules from the setup steps and click Publish.':(['unavailable','failed-precondition','not-found'].includes(x.code)?'Cannot reach the database. Check that Firestore Database is created in this Firebase project and that you are online.':(x.code||x.message));
 const dbFail=x=>{console.error(x);if(x.code==='permission-denied'&&user&&!isAdmin())denied=true;else dbErr=explain(x);render()};
@@ -135,6 +147,7 @@ function safeRender(){
 function render(){
   
   $('#who').innerHTML=user?`${esc(user.displayName)} <button data-out>Sign out</button>`:'';
+  $('#evname').textContent=user&&evKey?(ev.name||evKey.toUpperCase()):'';
   const app=$('#app');
   $('header').hidden=!user||blocked();
   if(!user){app.innerHTML=loginPage();return}
@@ -148,7 +161,7 @@ function render(){
 function loginPage(){
   return `<div class="login"><h1>FRC Scout</h1><p>Sign in with your team Google account to see your assigned matches.</p>
   <button class="gbtn" id="in"><svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>Sign in with Google</button>
-  ${ready?'':'<small>Setup needed: add your Firebase settings to config.js, then reload.</small>'}<small style="color:var(--mute)">Version 5.4</small></div>`;
+  ${ready?'':'<small>Setup needed: add your Firebase settings to config.js, then reload.</small>'}<small style="color:var(--mute)">Version 5.5</small></div>`;
 }
 
 function deniedPage(){
@@ -161,7 +174,7 @@ function pickView(){
   const sel=ev.matches.length?`
     <label for="sm">Match</label><select id="sm"><option value="">Choose a match</option>${ev.matches.map(m=>`<option value="${m.n}" ${String(m.n)===String(pick.m)?'selected':''}>Qualification ${m.n}</option>`).join('')}</select>
     <label for="st">Team</label><select id="st"><option value="">Choose a team</option>${teams.map(([t,a])=>`<option value="${t}" ${String(t)===String(pick.team)?'selected':''}>${t} (${a})</option>`).join('')}</select>`
-    :`<label for="sm">Match number</label><input id="sm" type="number" inputmode="numeric" value="${esc(pick.m)}"><label for="st">Team number</label><input id="st" type="number" inputmode="numeric" value="${esc(pick.team)}">`;
+    :`<label for="sm">Match number</label><input id="sm" type="number" inputmode="numeric" value="${esc(pick.m)}"><label for="st">Team number</label><input id="st" value="${esc(pick.team)}" autocapitalize="characters" autocomplete="off">`;
   const cur=pick.m+'|'+pick.team,go=`<button class="btn w" data-begin ${pick.m&&pick.team?'':'disabled'}>Start scouting</button>`;
   const onRoster=ev.roster.some(r=>(r.email||'').toLowerCase()===(user.email||'').toLowerCase());
   const status=!evLoaded?'<section>Loading event data...</section>':!evExists?`<section>No data found for event key <b>${esc(evKey)}</b>. It must match the key your lead scout loaded.</section>`:'';
@@ -175,19 +188,25 @@ function ptsHtml(){return `<span>Auto <b>${autoPts(s)}</b></span><span>Teleop <b
 function fuelPad(key){return `<div class="num big" id="n-${key}">${s[key]}</div><div class="fuel">${[[-1,'−1'],[1,'+1'],[5,'+5'],[10,'+10']].map(([d,l])=>`<button data-f="${key}" data-d="${d}">${l}</button>`).join('')}</div>`}
 const segBtns=(attr,items,cur)=>items.map(([v,l])=>`<button data-${attr}="${v}" class="${cur===v?'on':''}">${l}</button>`).join('');
 
+const SLIDES=['Side','Auto','Teleop','Endgame','Ratings','Notes'];
 function scoutView(){
   if(!s.team)return pickView();
-  return `<section><span class="chip" style="background:var(--${s.alliance||'mute'})"></span><b>Q${esc(s.m)}, team ${esc(s.team)}</b> <button class="btn ghost" style="float:right;padding:4px 10px" data-cancel>Change</button></section>
-  <div class="cards">
-    <section><h2>Starting position</h2><div class="seg">${segBtns('start',C.starts.map(p=>[p,p]),s.start)}</div></section>
-    <section><h2>Auto fuel</h2>${fuelPad('aF')}<button class="tog ${s.aClimb?'on':''}" data-aclimb>Climbed in auto (${C.pts.autoClimb} pts)</button></section>
-    <section><h2>Teleop fuel</h2>${fuelPad('tF')}</section>
-    <section><h2>Endgame hang</h2><div class="seg">${segBtns('hang',HANGS,s.hang)}</div></section>
-    <section><h2>Team rating (1 to 5)</h2>${RATE.map(k=>`<div class="rate"><span>${k}</span><div class="seg">${[1,2,3,4,5].map(n=>`<button data-r="${k}" data-v="${n}" class="${s.r[k]===n?'on':''}">${n}</button>`).join('')}</div></div>`).join('')}</section>
-    <section><h2>Comments</h2><label for="c1">What they do well</label><textarea id="c1" data-c="good" rows="3">${esc(s.c.good)}</textarea>
-    <label for="c2">Problems or other notes</label><textarea id="c2" data-c="bad" rows="3">${esc(s.c.bad)}</textarea></section>
-  </div>
-  <div class="bar"><div id="pts" style="display:flex;gap:12px">${ptsHtml()}</div><button class="btn" data-submit>Submit</button></div>`;
+  const al=s.alliance,last=s.step===SLIDES.length-1;
+  const head=`<section><span class="chip" style="background:var(--${al||'mute'})"></span><b>Q${esc(s.m)}, team ${esc(s.team)}</b> <button class="btn ghost" style="float:right;padding:4px 10px" data-cancel>Change</button>
+    <div class="dots">${SLIDES.map((x,i)=>`<button data-step="${i}" aria-label="${x}" class="${i===s.step?'on':''}"></button>`).join('')}</div>
+    <small style="color:var(--mute)">Step ${s.step+1} of ${SLIDES.length}: ${SLIDES[s.step]}</small></section>`;
+  const body=[
+    `<section class="side ${al}"><div>You are scouting</div><div class="num sidebig">${al?al.toUpperCase()+' ALLIANCE':'SIDE UNKNOWN'}</div><div>Team ${esc(s.team)}, match ${esc(s.m)}</div></section>
+     ${al?'':`<section><h2>Which side?</h2><div class="seg">${segBtns('side',[['red','Red'],['blue','Blue']],s.alliance)}</div></section>`}
+     <section><h2>Starting position</h2><div class="seg">${segBtns('start',C.starts.map(p=>[p,p]),s.start)}</div></section>`,
+    `<section><h2>Auto fuel</h2>${fuelPad('aF')}<button class="tog ${s.aClimb?'on':''}" data-aclimb>Climbed in auto (${C.pts.autoClimb} pts)</button></section>`,
+    `<section><h2>Teleop fuel</h2>${fuelPad('tF')}</section>`,
+    `<section><h2>Endgame hang</h2><div class="seg">${segBtns('hang',HANGS,s.hang)}</div></section>`,
+    `<section><h2>Team rating (1 to 5)</h2>${RATE.map(k=>`<div class="rate"><span>${k}</span><div class="seg">${[1,2,3,4,5].map(n=>`<button data-r="${k}" data-v="${n}" class="${s.r[k]===n?'on':''}">${n}</button>`).join('')}</div></div>`).join('')}</section>`,
+    `<section><h2>Comments</h2><label for="c1">What they do well</label><textarea id="c1" data-c="good" rows="4">${esc(s.c.good)}</textarea>
+     <label for="c2">Problems or other notes</label><textarea id="c2" data-c="bad" rows="4">${esc(s.c.bad)}</textarea></section>`
+  ][s.step];
+  return head+body+`<div class="bar"><div id="pts" style="display:flex;gap:12px">${ptsHtml()}</div><div class="navbtns">${s.step?'<button class="btn ghost" data-back>Back</button>':''}${last?'<button class="btn" data-submit>Submit</button>':'<button class="btn" data-next>Next</button>'}</div></div>`;
 }
 
 function teamStats(){
@@ -196,6 +215,7 @@ function teamStats(){
     hang:Math.round(rs.filter(r=>['L1','L2','L3'].includes(r.hang)).length/rs.length*100),
     rt:RATE.map(k=>avg(rs.map(r=>r.r?.[k]).filter(Boolean)))})).sort((x,y)=>(y.a+y.t)-(x.a+x.t));
 }
+const byTeam=(a,b)=>String(a.team).localeCompare(String(b.team),undefined,{numeric:true});
 const COLORS=['#3b82f6','#f5b83d','#e5484d','#34c38f','#a78bfa','#f97316'];
 const tot=r=>autoPts(r)+telePts(r);
 function lineChart(title,series){
@@ -206,8 +226,10 @@ function lineChart(title,series){
   const X=i=>L+(xs.length<2?(W-L-R)/2:i*(W-L-R)/(xs.length-1)),Y=v=>T+(H-T-B)*(1-v/ymax);
   const grid=[0,1,2,3,4].map(i=>{const v=ymax*i/4;return `<line class="gl" x1="${L}" x2="${W-R}" y1="${Y(v)}" y2="${Y(v)}"/><text class="tx" x="${L-5}" y="${Y(v)+3}" text-anchor="end">${v}</text>`}).join('');
   const xl=xs.map((x,i)=>i%every?'':`<text class="tx" x="${X(i)}" y="${H-8}" text-anchor="middle">Q${x}</text>`).join('');
+  const point=(p,l)=>{const t=(series.length>1?esc(l.name)+', ':'')+`Q${p[2]}: ${p[3]} pts`,w=t.length*6.3+16,lx=Math.min(Math.max(p[0],w/2+2),W-w/2-2),ly=p[1]>36?p[1]-14:p[1]+30;
+    return `<g class="pt" tabindex="0"><title>${t}</title><circle class="hit" cx="${p[0]}" cy="${p[1]}" r="13" fill="transparent"/><circle cx="${p[0]}" cy="${p[1]}" r="4" fill="${l.color}"/><g class="lab"><rect class="labbg" x="${lx-w/2}" y="${ly-15}" width="${w}" height="21" rx="6"/><text class="labtx" x="${lx}" y="${ly}" text-anchor="middle">${t}</text></g></g>`};
   const lines=series.map(l=>{const pts=[...l.pts].sort((a,b)=>a[0]-b[0]).map(([x,y])=>[X(xs.indexOf(x)),Y(y),x,y]);
-    return `<polyline fill="none" stroke="${l.color}" stroke-width="2.5" stroke-linejoin="round" points="${pts.map(p=>p[0]+','+p[1]).join(' ')}"/>`+pts.map(p=>`<circle cx="${p[0]}" cy="${p[1]}" r="3.5" fill="${l.color}"><title>${esc(l.name)}, Q${p[2]}: ${p[3]}</title></circle>`).join('')}).join('');
+    return `<polyline fill="none" stroke="${l.color}" stroke-width="2.5" stroke-linejoin="round" points="${pts.map(p=>p[0]+','+p[1]).join(' ')}"/>`+pts.map(p=>point(p,l)).join('')}).join('');
   const leg=series.length>1?`<div class="leg">${series.map(l=>`<span><span class="chip" style="background:${l.color}"></span>${esc(l.name)}</span>`).join('')}</div>`:'';
   return `<section><h2>${esc(title)}</h2><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(title)}" style="width:100%;height:auto">${grid}${xl}${lines}</svg>${leg}</section>`;
 }
@@ -227,7 +249,7 @@ function reportsView(){
 function teamView(){
   const teams=teamStats();if(!teams.length)return '<section>No reports yet for this event.</section>';
   const st=teams.find(x=>String(x.team)===String(teamSel))||teams[0],rs=byGame(st.rs);
-  const pick=`<section><button class="btn ghost" data-tab="reports" style="float:right;padding:6px 12px">Back to reports</button><label for="tsel">Team</label><select id="tsel" style="max-width:160px">${[...teams].sort((a,b)=>a.team-b.team).map(x=>`<option value="${x.team}" ${x===st?'selected':''}>${x.team}</option>`).join('')}</select></section>`;
+  const pick=`<section><button class="btn ghost" data-tab="reports" style="float:right;padding:6px 12px">Back to reports</button><label for="tsel">Team</label><select id="tsel" style="max-width:160px">${[...teams].sort(byTeam).map(x=>`<option value="${x.team}" ${x===st?'selected':''}>${x.team}</option>`).join('')}</select></section>`;
   const sum=`<section><h2>Team ${st.team}</h2><table class="kv"><tr><td>Games scouted</td><td>${st.n}</td></tr><tr><td>Average total points</td><td>${(st.a+st.t).toFixed(1)}</td></tr><tr><td>Average auto</td><td>${st.a.toFixed(1)}</td></tr><tr><td>Average teleop</td><td>${st.t.toFixed(1)}</td></tr><tr><td>Hang rate</td><td>${st.hang}%</td></tr>
     ${RATE.map((k,i)=>`<tr><td>${k}</td><td>${st.rt[i]?st.rt[i].toFixed(1)+' / 5':'-'}</td></tr>`).join('')}</table></section>`;
   const ln=(name,color,f)=>({name,color,pts:rs.map(r=>[+r.m,f(r)])});
@@ -239,7 +261,7 @@ function teamView(){
 }
 
 function compareView(){
-  const teams=teamStats().sort((a,b)=>a.team-b.team);if(!teams.length)return '<section>No reports yet for this event.</section>';
+  const teams=teamStats().sort(byTeam);if(!teams.length)return '<section>No reports yet for this event.</section>';
   cmp=cmp.filter(t=>teams.some(x=>x.team===t));
   const chosen=cmp.map(t=>teams.find(x=>x.team===t));
   const chips=`<section><h2>Pick teams to compare</h2><div class="seg">${teams.map(x=>{const i=cmp.indexOf(x.team);return `<button data-cmp="${x.team}" class="${i>=0?'on':''}" style="flex:0 0 auto;min-width:72px;${i>=0?`background:${COLORS[i]};border-color:${COLORS[i]};color:#111`:''}">${x.team}</button>`}).join('')}</div><small style="color:var(--mute)">Choose 2 to 6 teams.</small></section>`;
@@ -267,14 +289,19 @@ function adminView(){
 }
 
 /* ---------- actions ---------- */
+async function loadName(key){
+  if(!C.tbaKey||!key)return;
+  try{const r=await fetch(`https://www.thebluealliance.com/api/v3/event/${key}/simple`,{headers:{'X-TBA-Auth-Key':C.tbaKey}});
+    if(r.ok){const e=await r.json();setDoc(doc(db,'events',key),{name:e.name},{merge:true}).catch(dbFail)}}catch(x){console.error(x)}
+}
 async function tba(){
   if(!C.tbaKey)return toast('Add your Blue Alliance key in SETTINGS');
   const r=await fetch(`https://www.thebluealliance.com/api/v3/event/${evKey}/matches/simple`,{headers:{'X-TBA-Auth-Key':C.tbaKey}});
   if(!r.ok)return toast('Blue Alliance error '+r.status);
   const ms=(await r.json()).filter(m=>m.comp_level==='qm').sort((a,b)=>a.match_number-b.match_number)
-    .map(m=>({n:m.match_number,red:m.alliances.red.team_keys.map(k=>+k.slice(3)),blue:m.alliances.blue.team_keys.map(k=>+k.slice(3))}));
+    .map(m=>({n:m.match_number,red:m.alliances.red.team_keys.map(k=>k.slice(3)),blue:m.alliances.blue.team_keys.map(k=>k.slice(3))}));
   if(!ms.length)return toast('No qualification matches posted yet');
-  put({matches:ms},`Loaded ${ms.length} matches`);
+  put({matches:ms},`Loaded ${ms.length} matches`);loadName(evKey);
 }
 function autoAssign(){
   const N=ev.roster.length;if(!N||!ev.matches.length)return toast('Need a roster and a schedule');
@@ -305,6 +332,10 @@ document.addEventListener('click',e=>{
   else if(d.cmp){cmp=cmp.includes(d.cmp)?cmp.filter(t=>t!==d.cmp):cmp.length<6?[...cmp,d.cmp]:(toast('Up to 6 teams'),cmp);render()}
   else if('begin' in d){if(!isAdmin()&&ev.assign[pick.m+'_'+pick.team]!==me())return toast('That match is not assigned to you');s=newSess();s.m=pick.m;s.team=pick.team;s.alliance=allyOf(pick.m,pick.team);render()}
   else if('cancel' in d){if(confirm('Discard this match?')){s=newSess();render()}}
+  else if(d.step){s.step=+d.step;render();window.scrollTo(0,0)}
+  else if('next' in d){s.step=Math.min(s.step+1,SLIDES.length-1);render();window.scrollTo(0,0)}
+  else if('back' in d){s.step=Math.max(s.step-1,0);render();window.scrollTo(0,0)}
+  else if(d.side){s.alliance=d.side;render()}
   else if(d.start||d.hang||d.r){if(d.start)s.start=d.start;if(d.hang)s.hang=d.hang;if(d.r)s.r[d.r]=+d.v;
     b.parentElement.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));$('#pts').innerHTML=ptsHtml()}
   else if(d.f){s[d.f]=Math.max(0,s[d.f]+ +d.d);$('#n-'+d.f).textContent=s[d.f];$('#pts').innerHTML=ptsHtml()}
@@ -318,7 +349,7 @@ document.addEventListener('click',e=>{
 });
 document.addEventListener('change',e=>{
   const t=e.target;
-  if(t.id==='ek'){if(!isAdmin())return;setDoc(doc(db,'app','active'),{event:t.value.trim().toLowerCase()}).then(()=>toast('Event set for everyone'),dbFail)}
+  if(t.id==='ek'){if(!isAdmin())return;const key=t.value.trim().toLowerCase();setDoc(doc(db,'app','active'),{event:key}).then(()=>{toast('Event set for everyone');loadName(key)},dbFail)}
   else if(t.id==='asg'&&t.value){const[m,tm]=t.value.split('|');pick={m,team:tm};render()}
   else if(t.id==='sm'){pick={m:t.value,team:''};render()}
   else if(t.id==='st'){pick.team=t.value;render()}
